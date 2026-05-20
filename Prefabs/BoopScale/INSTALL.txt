@@ -1,0 +1,2 @@
+This uses ModularAvatar! Please install ModularAvatar. 
+This prefab includes the expression menu and the Boop contact, drag the prefab into your avatar, then reposition the trigger, located under BoopScale/HeadProxy, onto your nose or desired location. Other contacts that send parameter "Boop" will work, however please ensure the receiver type is set to on enter.
