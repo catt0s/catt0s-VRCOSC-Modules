@@ -84,7 +84,10 @@ namespace VRCOSC_Modules
                 case Parameters.Percent:
                     {
                         busyScaling = false;
-                        percent = parameter.GetValue<float>();
+                        if (shrink)
+                            percent = -parameter.GetValue<float>();
+                        else
+                            percent = parameter.GetValue<float>();
                         break;
                     }
                 case Parameters.Time:
