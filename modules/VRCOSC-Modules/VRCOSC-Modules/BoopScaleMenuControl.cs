@@ -29,7 +29,7 @@ namespace VRCOSC_Modules
         private bool scalingActive = false;
         private DateTime startTime;
         private TimeSpan timeCurrent = TimeSpan.Zero;
-        private bool initialized;
+
 
         public enum Parameters
         {
@@ -63,7 +63,6 @@ namespace VRCOSC_Modules
 
             GetSetting(Settings.Percentage).OnSettingChange += UpdateAvatarParams;
             GetSetting(Settings.Time).OnSettingChange += UpdateAvatarParams;
-            initialized = false;
 
             base.OnPreLoad();
         }
@@ -82,6 +81,7 @@ namespace VRCOSC_Modules
                     return true;
                 }
             }
+            scalingActive = false;
             UpdateAvatarParams();
             return true;
         }
@@ -100,6 +100,7 @@ namespace VRCOSC_Modules
 
         protected override async void OnRegisteredParameterReceived(RegisteredParameter parameter)
         {
+            LogDebug("Recieved Parameter");
             switch (parameter.Lookup)
             {
                 case Parameters.Boop:
@@ -110,7 +111,7 @@ namespace VRCOSC_Modules
                     }
                 case Parameters.Percent:
                     {
-                        if ((await FindParameter(Parameters.Shrink)).GetValue<bool>())
+                        if ((await FindParameter(Parameters.Shrink)) != null && (await FindParameter(Parameters.Shrink)).GetValue<bool>())
                         {
                             GetSetting(Settings.Percentage).OnSettingChange -= UpdateAvatarParams;
                             SetSettingValue<float>(Settings.Percentage, -parameter.GetValue<float>() * 100f);
@@ -122,13 +123,16 @@ namespace VRCOSC_Modules
                             SetSettingValue<float>(Settings.Percentage, parameter.GetValue<float>() * 100f);
                             GetSetting(Settings.Percentage).OnSettingChange += UpdateAvatarParams;
                         }
-                        LogDebug($"Set percent to {GetSettingValue<float>(Settings.Time)}.");
+                        LogDebug($"Set percent to {GetSettingValue<float>(Settings.Percentage)}.");
                         break;
                     }
                 case Parameters.Time:
                     {
                         timeTotal = TimeSpan.FromSeconds(parameter.GetValue<float>());
-                        SetSettingValue<float>(Settings.Time, (float)timeTotal.TotalSeconds);
+                        LogDebug($"Set timetotal to {timeTotal.ToString()} seconds.");
+                        GetSetting(Settings.Time).OnSettingChange -= UpdateAvatarParams;
+                        SetSettingValue<float>(Settings.Time, parameter.GetValue<float>());
+                        GetSetting(Settings.Time).OnSettingChange += UpdateAvatarParams;
                         LogDebug($"Set time to {parameter.GetValue<float>()} seconds.");
                         break;
                     }
@@ -136,11 +140,15 @@ namespace VRCOSC_Modules
                     {
                         if (parameter.GetValue<bool>())
                         {
+                            GetSetting(Settings.Percentage).OnSettingChange -= UpdateAvatarParams;
                             SetSettingValue<float>(Settings.Percentage, -MathF.Abs(GetSettingValue<float>(Settings.Percentage)));
+                            GetSetting(Settings.Percentage).OnSettingChange += UpdateAvatarParams;
                         }
                         else
                         {
+                            GetSetting(Settings.Percentage).OnSettingChange -= UpdateAvatarParams;
                             SetSettingValue<float>(Settings.Percentage, MathF.Abs(GetSettingValue<float>(Settings.Percentage)));
+                            GetSetting(Settings.Percentage).OnSettingChange += UpdateAvatarParams;
                         }
 
                         LogDebug($"Set shrink to {parameter.GetValue<bool>()}.");
@@ -160,11 +168,12 @@ namespace VRCOSC_Modules
             else SendParameterAndWait(Parameters.Shrink, false);
 
             SendParameterAndWait(Parameters.Percent, MathF.Abs(GetSettingValue<float>(Settings.Percentage) / 100f), true);
-            SendParameterAndWait(Parameters.Time, (float)(timeTotal.TotalSeconds), true);
+            if (timeTotal.TotalSeconds == 0)
+                SendParameterAndWait(Parameters.Time, ((float)(timeTotal.TotalSeconds)), true);
+            SendParameterAndWait(Parameters.Time, ((float)(timeTotal.TotalSeconds)), true);
 
             LogDebug("Updated parameters");
         }
-
 
         //UPDATE
 
@@ -198,7 +207,7 @@ namespace VRCOSC_Modules
 
             scalingActive = true;
             if (t != null)
-                SendParameterAndWait(Parameters.AvatarBusy, true);
+                SendParameter(Parameters.AvatarBusy, true);
 
             LogDebug("Started scaling");
         }
@@ -213,7 +222,7 @@ namespace VRCOSC_Modules
                 if (timeCurrent >= timeTotal)
                 {
                     scalingActive = false;
-                    SendParameterAndWait(Parameters.AvatarBusy, false);
+                    SendParameter(Parameters.AvatarBusy, false);
                     LogDebug("Finished scaling");
                 }
             }
