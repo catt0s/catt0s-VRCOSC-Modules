@@ -496,6 +496,7 @@ GameObject:
   - component: {fileID: 3022768363929160917}
   - component: {fileID: 3902117682981435409}
   - component: {fileID: 908703606309623743}
+  - component: {fileID: 9174073196718205763}
   m_Layer: 0
   m_Name: BoopScale
   m_TagString: Untagged
@@ -606,6 +607,20 @@ MonoBehaviour:
     saved: 0
     hasExplicitDefaultValue: 1
     m_overrideAnimatorDefaults: 0
+--- !u!114 &9174073196718205763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7832327218776084775}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ef83cb0c23d4d7c9d41021e544a1978, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuToAppend: {fileID: 0}
+  installTargetMenu: {fileID: 0}
 --- !u!1 &8681456427614501368
 GameObject:
   m_ObjectHideFlags: 0
