@@ -18,17 +18,12 @@ namespace VRCOSC_Modules
     [ModuleTitle("BoopScale - Menu")]
     [ModuleDescription("Scale when a contact is booped with controls from an avatar menu")]
     [ModuleType(ModuleType.Generic)]
-    public class BoopScaleMenuControl : Module
+    public class BoopScaleMenuControl : ScalingModule
     {
 
         //VARIABLES
 
-        private float startHeight;
-        private float endHeight;
-        private TimeSpan timeTotal;
-        private bool scalingActive = false;
-        private DateTime startTime;
-        private TimeSpan timeCurrent = TimeSpan.Zero;
+        private Random rand;
 
 
         public enum Parameters
@@ -37,13 +32,19 @@ namespace VRCOSC_Modules
             Time,
             Percent,
             Shrink,
-            AvatarBusy
+            AvatarBusy,
+            Random
         }
 
         public enum Settings
         {
             Percentage,
-            Time
+            Time,
+            Random,
+            RandomMin,
+            RandomMax,
+            RandomTimeMin,
+            RandomTimeMax
         }
 
 
@@ -57,9 +58,11 @@ namespace VRCOSC_Modules
             RegisterParameter<float>(Parameters.Percent, "BoopScale/Percent", ParameterMode.ReadWrite, "Percentage Parameter", "Percentage to shrink/grow");
             RegisterParameter<bool>(Parameters.Shrink, "BoopScale/Shrink", ParameterMode.ReadWrite, "Shrink Toggle Parameter", "Toggle shrinking");
             RegisterParameter<bool>(Parameters.AvatarBusy, "OSCScalingBusy", ParameterMode.ReadWrite, "Scaling parameter", "Parameter indicating that avatar is currently scaling, prevents overlap with other catt0s modules and can be used to play an animation during.");
+            RegisterParameter<bool>(Parameters.Random, "BoopScale/Random", ParameterMode.ReadWrite, "Random Toggle Parameter", "Toggle randomness");
+            //RegisterParameter<bool>(Parameters.RandomMin, "BoopScale/RandomMin", ParameterMode.ReadWrite, "Random Minimum Percent Parameter", "Toggle randomness");
+            //RegisterParameter<bool>(Parameters.RandomMax, "BoopScale/RandomMax", ParameterMode.ReadWrite, "Random Maximum Percent Parameter", "Toggle randomness");
 
-            CreateTextBox(Settings.Percentage, "Amount to scale in percentage", "e.g. 50 for 50%, also accepts negatives.", 10f);
-            CreateTextBox(Settings.Time, "Time to scale", "Time it takes to reach expected height", 2f);
+            RegisterScalingSettings();
 
             GetSetting(Settings.Percentage).OnSettingChange += UpdateAvatarParams;
             GetSetting(Settings.Time).OnSettingChange += UpdateAvatarParams;
@@ -81,6 +84,7 @@ namespace VRCOSC_Modules
                     return true;
                 }
             }
+            rand = new();
             scalingActive = false;
             UpdateAvatarParams();
             return true;
@@ -106,7 +110,20 @@ namespace VRCOSC_Modules
                 case Parameters.Boop:
                     {
                         Log("Boop!");
-                        StartScaling((float)GetSettingValue<float>(Settings.Percentage) / 100f, TimeSpan.FromSeconds(GetSettingValue<float>(Settings.Time)));
+                        if (GetSettingValue<bool>(Settings.Random))
+                        {
+                            StartScaling(float.Lerp
+                                (
+                                GetSettingValue<float>(Settings.RandomMin) / 100f,
+                                GetSettingValue<float>(Settings.RandomMax) / 100f,
+                                rand.NextSingle() 
+                                ),
+                                TimeSpan.FromSeconds(float.Lerp(GetSettingValue<float>(Settings.RandomTimeMin), GetSettingValue<float>(Settings.RandomTimeMax), rand.NextSingle())));
+                            LogDebug("RandomStarted");
+                        }
+
+                        else
+                            StartScaling((float)GetSettingValue<float>(Settings.Percentage) / 100f, TimeSpan.FromSeconds(GetSettingValue<float>(Settings.Time)));
                         break;
                     }
                 case Parameters.Percent:
@@ -174,59 +191,5 @@ namespace VRCOSC_Modules
 
             LogDebug("Updated parameters");
         }
-
-        //UPDATE
-
-
-        async private void StartScaling(float percent, TimeSpan time)
-        {
-            VRChatParameter? t = await FindParameter(Parameters.AvatarBusy);
-            if (t != null && t.GetValue<bool>() == true)
-            {
-                LogDebug("Scaling is busy. Try again later!");
-                return;
-            }
-
-            startTime = DateTime.Now;
-
-            startHeight = GetClient().Avatar.EyeHeight;
-            LogDebug($"StartHeight is {startHeight}");
-
-            if (percent == 0)
-            {
-                Log("No change");
-                return;
-            }
-            if (percent <= -1f)
-            {
-                percent = -.99999f;
-                Log("Cannot shrink beyond 100%.");
-            }
-            endHeight = startHeight * (1 + percent);
-            LogDebug($"End height is {endHeight}");
-
-            scalingActive = true;
-            if (t != null)
-                SendParameter(Parameters.AvatarBusy, true);
-
-            LogDebug("Started scaling");
-        }
-
-        [ModuleUpdate(ModuleUpdateMode.Custom, false, 20.0)]
-        async private void ScalingUpdate()
-        {
-            if (scalingActive)
-            {
-                timeCurrent = DateTime.Now - startTime;
-                GetClient().Avatar.SetEyeHeight(Single.Lerp(startHeight, endHeight, (float)(timeCurrent / timeTotal)));
-                if (timeCurrent >= timeTotal)
-                {
-                    scalingActive = false;
-                    SendParameter(Parameters.AvatarBusy, false);
-                    LogDebug("Finished scaling");
-                }
-            }
-        }
-
     }
 }
